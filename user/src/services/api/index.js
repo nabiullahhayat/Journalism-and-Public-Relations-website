@@ -1,0 +1,11 @@
+export { default as apiClient } from './client';
+export { authAPI } from './auth';
+export { departmentsAPI } from './departments';
+export { coursesAPI } from './courses';
+export { teachersAPI } from './teachers';
+export { newsAPI } from './news';
+export { monographsAPI } from './monographs';
+export { adminsAPI } from './admins';
+export { aboutAPI } from './about';
+export { contactAPI } from './contact';
+export { publicAPI } from './public';

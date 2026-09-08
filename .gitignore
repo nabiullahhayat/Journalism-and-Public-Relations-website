@@ -1,0 +1,105 @@
+# =============================================================================
+# Journalism Faculty Website — root gitignore (GitHub + security)
+# =============================================================================
+
+# --- Secrets & environment (never commit) ------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+secrets/
+credentials/
+*.credentials.json
+serviceAccount*.json
+firebase-adminsdk*.json
+
+# --- Dependencies -----------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# --- Build & cache ----------------------------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# --- Logs & runtime ---------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# --- Test & coverage --------------------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# --- OS & editor noise ------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# VS Code — ignore local settings, keep shared extensions if present
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# --- Database & backups -----------------------------------------------------
+*.dump
+*.sql.gz
+dump/
+data/db/
+mongodb-data/
+
+# --- User uploads (serve locally, do not version binary assets) -------------
+back/uploads/**/*
+!back/uploads/**/.gitkeep
+
+# --- Legacy / generated -----------------------------------------------------
+**/generated/prisma
+.prisma/
+
+# --- Misc local overrides ---------------------------------------------------
+*.local
+.envrc
+.direnv/
+
+# --- Optional: local agent/IDE session data ---------------------------------
+.cursor/projects/
+.agent/

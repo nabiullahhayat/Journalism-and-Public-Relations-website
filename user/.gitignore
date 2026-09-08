@@ -1,0 +1,43 @@
+# Frontend — security-focused gitignore (see root .gitignore too)
+
+# Secrets (Vite exposes VITE_* to the client — still never commit .env)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Production build
+dist/
+dist-ssr/
+build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Local Vite overrides
+*.local
+
+# Test & coverage
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor (keep optional shared config)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
