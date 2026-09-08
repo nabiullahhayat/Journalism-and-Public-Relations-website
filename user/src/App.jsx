@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
+import { ADMIN_ROUTES } from './config/routes';
 import './App.css';
 
 import { lazy, Suspense } from 'react';
@@ -73,7 +74,7 @@ function App() {
               <Route path="/contact" element={<Contact />} />
 
               <Route
-                path="/admin/login"
+                path={ADMIN_ROUTES.login}
                 element={
                   <PublicRoute redirectIfAuthenticated>
                     <AdminLogin />
@@ -82,15 +83,14 @@ function App() {
               />
 
               <Route
-                path="/admin"
+                path="/dashboard"
                 element={
                   <ProtectedRoute>
                     <AdminLayout />
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
+                <Route index element={<Dashboard />} />
                 <Route path="admins" element={<AdminsManagement />} />
                 <Route path="departments" element={<DepartmentsManagement />} />
                 <Route path="courses" element={<CoursesManagement />} />
@@ -101,8 +101,13 @@ function App() {
                 <Route path="contact" element={<ContactManagement />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="*" element={<Navigate to={ADMIN_ROUTES.dashboard} replace />} />
               </Route>
+
+              {/* Legacy admin URLs */}
+              <Route path="/admin/login" element={<Navigate to={ADMIN_ROUTES.login} replace />} />
+              <Route path="/admin/dashboard" element={<Navigate to={ADMIN_ROUTES.dashboard} replace />} />
+              <Route path="/admin/*" element={<Navigate to={ADMIN_ROUTES.dashboard} replace />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

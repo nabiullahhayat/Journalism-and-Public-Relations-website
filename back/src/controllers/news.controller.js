@@ -58,7 +58,7 @@ export const createNews = asyncHandler(async (req, res) => {
 
   const news = await News.create({
     title: data.title,
-    description: data.description,
+    description: data.description || data.excerpt || data.content || data.title,
     content: data.content || null,
     excerpt: data.excerpt || null,
     image: data.image,

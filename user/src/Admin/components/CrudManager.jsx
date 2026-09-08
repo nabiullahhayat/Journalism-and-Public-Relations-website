@@ -57,6 +57,14 @@ const CrudManager = ({
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: [queryKey] });
 
+  const getErrorMessage = (err, fallback) => {
+    const fieldErrors = err?.data?.errors;
+    if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+      return fieldErrors.map((e) => e.message).join(', ');
+    }
+    return err?.message || fallback;
+  };
+
   const createMutation = useMutation({
     mutationFn: createFn,
     onSuccess: () => {
@@ -64,7 +72,7 @@ const CrudManager = ({
       toast.success('Created successfully');
       handleCloseModal();
     },
-    onError: (err) => toast.error(err.message || 'Failed to create'),
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to create')),
   });
 
   const updateMutation = useMutation({
@@ -74,7 +82,7 @@ const CrudManager = ({
       toast.success('Updated successfully');
       handleCloseModal();
     },
-    onError: (err) => toast.error(err.message || 'Failed to update'),
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to update')),
   });
 
   const deleteMutation = useMutation({
@@ -83,7 +91,7 @@ const CrudManager = ({
       invalidate();
       toast.success('Deleted successfully');
     },
-    onError: (err) => toast.error(err.message || 'Failed to delete'),
+    onError: (err) => toast.error(getErrorMessage(err, 'Failed to delete')),
   });
 
   const items = Array.isArray(data?.data) ? data.data : [];

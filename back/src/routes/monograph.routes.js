@@ -5,7 +5,6 @@ import { validate, validateObjectId } from '../middlewares/validate.js';
 import { 
   createMonographValidator, 
   updateMonographValidator,
-  monographIdValidator,
   monographYearValidator 
 } from '../validators/monograph.validator.js';
 

@@ -1,31 +1,28 @@
-# Backend — security-focused gitignore (see root .gitignore too)
 
-# Secrets
 .env
 .env.*
 !.env.example
 
-# Dependencies
+
 node_modules/
 
-# Logs
 logs/
 *.log
 
-# Local uploads (images uploaded via admin)
+
 uploads/**/*
 !uploads/**/.gitkeep
 
-# Legacy Prisma output
+
 /src/generated/prisma
 
-# Runtime / temp
+
 tmp/
 temp/
 .cache/
 
-# Coverage
+
 coverage/
 
-# OS
+
 .DS_Store

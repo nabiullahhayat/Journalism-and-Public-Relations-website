@@ -1,24 +1,24 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ADMIN_ROUTES } from '../config/routes';
 
 const PublicRoute = ({ children, redirectIfAuthenticated = false }) => {
-  const { isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { isAuthenticated, isInitialized, user } = useAuth();
+  const location = useLocation();
+  const isLoginPage = location.pathname === ADMIN_ROUTES.login;
 
-  // Wait for auth initialization
-  if (!isInitialized || isLoading) {
+  if (!isLoginPage && !isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C79C78]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C79C78]" />
       </div>
     );
   }
 
-  // If user is authenticated and we should redirect, go to dashboard
-  if (redirectIfAuthenticated && isAuthenticated) {
-    return <Navigate to="/admin/dashboard" replace />;
+  if (redirectIfAuthenticated && isAuthenticated && user?.role) {
+    return <Navigate to={ADMIN_ROUTES.dashboard} replace />;
   }
 
-  // Otherwise, render the public content
   return children;
 };
 

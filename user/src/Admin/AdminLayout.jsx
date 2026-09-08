@@ -5,19 +5,21 @@ import {
   FiLogOut, FiMenu, FiX, FiUser, FiShield, FiInfo, FiMail,
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogos from '../components/BrandLogos';
+import { ADMIN_ROUTES } from '../config/routes';
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: FiHome, roles: ['superadmin', 'admin', 'editor', 'viewer'] },
-  { name: 'Admins', href: '/admin/admins', icon: FiShield, roles: ['superadmin', 'admin'] },
-  { name: 'Departments', href: '/admin/departments', icon: FiUsers, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'Courses', href: '/admin/courses', icon: FiBook, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'Teachers', href: '/admin/teachers', icon: FiUsers, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'News', href: '/admin/news', icon: FiFileText, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'Monographs', href: '/admin/monographs', icon: FiBookOpen, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'About', href: '/admin/about', icon: FiInfo, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'Contact', href: '/admin/contact', icon: FiMail, roles: ['superadmin', 'admin', 'editor'] },
-  { name: 'Profile', href: '/admin/profile', icon: FiUser, roles: ['superadmin', 'admin', 'editor', 'viewer'] },
-  { name: 'Settings', href: '/admin/settings', icon: FiSettings, roles: ['superadmin', 'admin'] },
+  { name: 'Dashboard', href: ADMIN_ROUTES.dashboard, icon: FiHome, roles: ['superadmin', 'admin', 'editor', 'viewer'] },
+  { name: 'Admins', href: ADMIN_ROUTES.admins, icon: FiShield, roles: ['superadmin', 'admin'] },
+  { name: 'Departments', href: ADMIN_ROUTES.departments, icon: FiUsers, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'Courses', href: ADMIN_ROUTES.courses, icon: FiBook, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'Teachers', href: ADMIN_ROUTES.teachers, icon: FiUsers, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'News', href: ADMIN_ROUTES.news, icon: FiFileText, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'Monographs', href: ADMIN_ROUTES.monographs, icon: FiBookOpen, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'About', href: ADMIN_ROUTES.about, icon: FiInfo, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'Contact', href: ADMIN_ROUTES.contact, icon: FiMail, roles: ['superadmin', 'admin', 'editor'] },
+  { name: 'Profile', href: ADMIN_ROUTES.profile, icon: FiUser, roles: ['superadmin', 'admin', 'editor', 'viewer'] },
+  { name: 'Settings', href: ADMIN_ROUTES.settings, icon: FiSettings, roles: ['superadmin', 'admin'] },
 ];
 
 const AdminLayout = () => {
@@ -25,21 +27,15 @@ const AdminLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  const userRole = user?.role || (() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}').role;
-    } catch {
-      return null;
-    }
-  })();
+  const userRole = user?.role;
 
   const filteredNavigation = navigation.filter(
     (item) => userRole && item.roles.includes(userRole)
   );
 
   const isActive = (path) => {
-    if (path === '/admin/dashboard') {
-      return location.pathname === '/admin/dashboard';
+    if (path === ADMIN_ROUTES.dashboard) {
+      return location.pathname === ADMIN_ROUTES.dashboard;
     }
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
@@ -50,7 +46,7 @@ const AdminLayout = () => {
     <div className="min-h-screen page-backdrop">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-white/30 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -62,11 +58,9 @@ const AdminLayout = () => {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200/60">
-            <Link to="/admin/dashboard" className="flex items-center space-x-2" onClick={() => setSidebarOpen(false)}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#C79C78]">
-                <span className="text-white font-bold text-sm">JF</span>
-              </div>
-              <span className="text-lg font-bold text-slate-900">Admin Panel</span>
+            <Link to={ADMIN_ROUTES.dashboard} className="flex items-center space-x-2 min-w-0" onClick={() => setSidebarOpen(false)}>
+              <BrandLogos size="sm" universityLink={false} />
+              <span className="text-sm font-bold text-slate-900 truncate">Admin</span>
             </Link>
             <button type="button" onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-white/60">
               <FiX size={20} />
@@ -113,7 +107,7 @@ const AdminLayout = () => {
             <button
               type="button"
               onClick={() => logout()}
-              className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50/80 backdrop-blur text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
+              className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50/80 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
             >
               <FiLogOut size={20} />
               <span>Logout</span>
@@ -134,8 +128,6 @@ const AdminLayout = () => {
             </h1>
             <Link
               to="/"
-              target="_blank"
-              rel="noopener noreferrer"
               className="hidden sm:flex items-center space-x-2 px-4 py-2 text-sm font-medium text-[#C79C78] hover:text-[#a8784e] glass-panel rounded-lg"
             >
               <FiHome size={18} />
@@ -145,13 +137,7 @@ const AdminLayout = () => {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {!userRole ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C79C78]" />
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
         </main>
       </div>
     </div>

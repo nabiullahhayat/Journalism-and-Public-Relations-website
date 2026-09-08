@@ -6,7 +6,6 @@ import {
   createCourseValidator, 
   updateCourseValidator,
   addInstructorValidator,
-  removeInstructorValidator 
 } from '../validators/course.validator.js';
 
 const router = express.Router();

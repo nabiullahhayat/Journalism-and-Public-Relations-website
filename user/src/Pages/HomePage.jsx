@@ -43,8 +43,8 @@ const HomePage = () => {
 
   return (
     <Layout>
-      <section className="relative min-h-[480px] sm:min-h-[540px] flex items-center glass-hero overflow-hidden border-b border-slate-200/80">
-        <div className="absolute inset-0 hero-mesh opacity-60 pointer-events-none" />
+      <section className="relative min-h-[380px] sm:min-h-[420px] flex items-center glass-hero overflow-hidden border-b border-slate-200/80">
+        <div className="absolute inset-0 hero-mesh opacity-50 pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#C79C78]" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
@@ -133,7 +133,7 @@ const HomePage = () => {
                         alt={item.title}
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">

@@ -6,7 +6,6 @@ import {
   createAdminValidator, 
   updateAdminValidator, 
   changePasswordValidator,
-  adminIdValidator 
 } from '../validators/admin.validator.js';
 
 const router = express.Router();
@@ -86,6 +85,7 @@ router.delete(
 router.put(
   '/:id/change-password',
   isSuperAdmin,
+  validateObjectId('id'),
   changePasswordValidator,
   validate,
   adminController.changeAdminPassword

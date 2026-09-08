@@ -1,121 +1,108 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { 
-  FiUsers, 
-  FiBook, 
-  FiFileText, 
+import {
+  FiUsers,
+  FiBook,
+  FiFileText,
   FiBookOpen,
   FiTrendingUp,
-  FiArrowRight
+  FiArrowRight,
 } from 'react-icons/fi';
 import { Card, Spinner, Badge } from '../components/ui';
-import { 
-  departmentsAPI, 
-  coursesAPI, 
-  teachersAPI, 
-  newsAPI,
-  monographsAPI
-} from '../services/api';
+import { dashboardAPI } from '../services/api';
+import { ADMIN_ROUTES } from '../config/routes';
 import { useAuth } from '../contexts/AuthContext';
+import useAuthStore from '../store/authStore';
+import { getImageUrl } from '../utils/image';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
-  // Fetch statistics
-  const { data: deptData, isLoading: deptLoading } = useQuery({
-    queryKey: ['departments-count'],
-    queryFn: () => departmentsAPI.getAll({ limit: 1 }),
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['admin-dashboard-summary', accessToken],
+    queryFn: () => dashboardAPI.getSummary(),
+    enabled: hasHydrated && Boolean(accessToken),
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
   });
 
-  const { data: coursesData, isLoading: coursesLoading } = useQuery({
-    queryKey: ['courses-count'],
-    queryFn: () => coursesAPI.getAll({ limit: 1 }),
-  });
-
-  const { data: teachersData, isLoading: teachersLoading } = useQuery({
-    queryKey: ['teachers-count'],
-    queryFn: () => teachersAPI.getAll({ limit: 1 }),
-  });
-
-  const { data: newsData, isLoading: newsLoading } = useQuery({
-    queryKey: ['news-count'],
-    queryFn: () => newsAPI.getAll({ limit: 1 }),
-  });
-
-  const { data: monoData, isLoading: monoLoading } = useQuery({
-    queryKey: ['monographs-count'],
-    queryFn: () => monographsAPI.getAll({ limit: 1 }),
-  });
-
-  const { data: latestNews } = useQuery({
-    queryKey: ['latest-news-admin'],
-    queryFn: () => newsAPI.getLatest(5),
-  });
+  const statsData = data?.data?.stats;
+  const latestNews = Array.isArray(data?.data?.latestNews) ? data.data.latestNews : [];
 
   const stats = [
     {
       name: 'Departments',
-      value: deptData?.meta?.pagination?.total ?? 0,
+      value: statsData?.departments ?? 0,
       icon: FiUsers,
       color: 'bg-[#C79C78]',
-      link: '/admin/departments',
-      loading: deptLoading,
+      link: ADMIN_ROUTES.departments,
     },
     {
       name: 'Courses',
-      value: coursesData?.meta?.pagination?.total ?? 0,
+      value: statsData?.courses ?? 0,
       icon: FiBook,
       color: 'bg-green-500',
-      link: '/admin/courses',
-      loading: coursesLoading,
+      link: ADMIN_ROUTES.courses,
     },
     {
       name: 'Faculty',
-      value: teachersData?.meta?.pagination?.total ?? 0,
+      value: statsData?.teachers ?? 0,
       icon: FiUsers,
       color: 'bg-purple-500',
-      link: '/admin/teachers',
-      loading: teachersLoading,
+      link: ADMIN_ROUTES.teachers,
     },
     {
       name: 'News',
-      value: newsData?.meta?.pagination?.total ?? 0,
+      value: statsData?.news ?? 0,
       icon: FiFileText,
       color: 'bg-orange-500',
-      link: '/admin/news',
-      loading: newsLoading,
+      link: ADMIN_ROUTES.news,
     },
     {
       name: 'Monographs',
-      value: monoData?.meta?.pagination?.total ?? 0,
+      value: statsData?.monographs ?? 0,
       icon: FiBookOpen,
       color: 'bg-[#a8784e]',
-      link: '/admin/monographs',
-      loading: monoLoading,
+      link: ADMIN_ROUTES.monographs,
     },
   ];
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date) =>
+    new Date(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
-  };
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Welcome Section */}
       <div className="rounded-2xl p-6 sm:p-8 glass-panel-strong border border-white/90">
         <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-slate-900 font-serif">
           Welcome back, {user?.fullName || user?.username}!
         </h2>
         <p className="text-base sm:text-lg text-slate-600">
-          Here's what's happening with your faculty management system today.
+          Here&apos;s what&apos;s happening with your faculty management system today.
         </p>
       </div>
 
-      {/* Statistics Grid */}
+      {isError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>
+            Could not load dashboard stats.
+            {error?.message ? ` ${error.message}` : ' Check that the backend is running on port 3001.'}
+          </span>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="text-red-800 underline font-medium shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -129,8 +116,8 @@ const Dashboard = () => {
                     </div>
                     <FiTrendingUp className="text-green-500" size={20} />
                   </div>
-                  
-                  {stat.loading ? (
+
+                  {isLoading ? (
                     <div className="flex items-center justify-center py-2">
                       <Spinner size="sm" />
                     </div>
@@ -150,45 +137,52 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        {/* Latest News */}
         <Card title="Latest News" subtitle="Recent news articles">
           <div className="space-y-4">
-            {latestNews?.data?.slice(0, 5).map((item) => (
-              <div
-                key={item.id || item._id}
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {item.image && (
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h4 className="text-sm sm:text-base font-medium text-gray-900 line-clamp-2">
-                      {item.title}
-                    </h4>
-                    {item.featured && (
-                      <Badge variant="warning" size="sm" className="flex-shrink-0">
-                        Featured
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-500">
-                    {formatDate(item.publishedAt || item.createdAt)}
-                  </p>
-                </div>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="md" />
               </div>
-            ))}
-            
-            {(!latestNews?.data || latestNews.data.length === 0) && (
+            ) : (
+              latestNews.slice(0, 5).map((item) => (
+                <div
+                  key={item.id || item._id}
+                  className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {item.image && (
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className="text-sm sm:text-base font-medium text-gray-900 line-clamp-2">
+                        {item.title}
+                      </h4>
+                      {item.featured && (
+                        <Badge variant="warning" size="sm" className="flex-shrink-0">
+                          Featured
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      {formatDate(item.publishedAt || item.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {!isLoading && latestNews.length === 0 && (
               <p className="text-center text-gray-500 py-8">No news articles yet</p>
             )}
-            
+
             <Link
-              to="/admin/news"
+              to={ADMIN_ROUTES.news}
               className="flex items-center justify-center space-x-2 font-medium text-sm pt-2 hover:opacity-75 transition-opacity"
               style={{ color: '#C79C78' }}
             >
@@ -198,11 +192,10 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Quick Actions */}
         <Card title="Quick Actions" subtitle="Common tasks">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Link
-              to="/admin/news"
+              to={ADMIN_ROUTES.news}
               className="flex items-center space-x-3 p-4 rounded-lg border-2 border-gray-200 transition-all hover:border-[#C79C78] hover:bg-[rgba(199,156,120,0.06)]"
             >
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(199,156,120,0.15)' }}>
@@ -215,7 +208,7 @@ const Dashboard = () => {
             </Link>
 
             <Link
-              to="/admin/teachers"
+              to={ADMIN_ROUTES.teachers}
               className="flex items-center space-x-3 p-4 rounded-lg border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all"
             >
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -228,7 +221,7 @@ const Dashboard = () => {
             </Link>
 
             <Link
-              to="/admin/courses"
+              to={ADMIN_ROUTES.courses}
               className="flex items-center space-x-3 p-4 rounded-lg border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all"
             >
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -241,7 +234,7 @@ const Dashboard = () => {
             </Link>
 
             <Link
-              to="/admin/monographs"
+              to={ADMIN_ROUTES.monographs}
               className="flex items-center space-x-3 p-4 rounded-lg border-2 border-gray-200 transition-all hover:border-[#a8784e] hover:bg-[rgba(168,120,78,0.06)]"
             >
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(168,120,78,0.15)' }}>
@@ -256,7 +249,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* System Info */}
       <Card>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center">
           <div>

@@ -6,7 +6,6 @@ import {
   createDepartmentValidator, 
   updateDepartmentValidator,
   addTeacherToDepartmentValidator,
-  removeTeacherFromDepartmentValidator 
 } from '../validators/department.validator.js';
 
 const router = express.Router();

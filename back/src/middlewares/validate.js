@@ -1,5 +1,12 @@
+import mongoose from 'mongoose';
 import { validationResult } from 'express-validator';
 import { sendError } from '../utils/response.js';
+
+const isValidMongoId = (value) => {
+  if (!value) return false;
+  const id = String(value);
+  return mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id;
+};
 
 /**
  * Validate request and send errors if any
@@ -70,24 +77,22 @@ export const validatePagination = (req, res, next) => {
 };
 
 /**
- * Validate integer ID parameter (Prisma/SQLite uses integer IDs)
+ * Validate MongoDB ObjectId route parameter
  */
 export const validateObjectId = (paramName = 'id') => {
   return (req, res, next) => {
     const id = req.params[paramName];
 
-    if (!id || isNaN(parseInt(id)) || parseInt(id) <= 0) {
+    if (!isValidMongoId(id)) {
       return sendError(res, 400, `Invalid ${paramName} format`);
     }
 
-    // Coerce to integer so controllers can use it directly
-    req.params[paramName] = String(parseInt(id));
     next();
   };
 };
 
 /**
- * Validate array of integer IDs
+ * Validate array of MongoDB ObjectIds
  */
 export const validateObjectIdArray = (fieldName) => {
   return (req, res, next) => {
@@ -97,7 +102,7 @@ export const validateObjectIdArray = (fieldName) => {
       return sendError(res, 400, `${fieldName} must be an array`);
     }
 
-    const invalidIds = ids.filter(id => isNaN(parseInt(id)) || parseInt(id) <= 0);
+    const invalidIds = ids.filter((id) => !isValidMongoId(id));
     if (invalidIds.length > 0) {
       return sendError(res, 400, `Invalid ID format in ${fieldName}`);
     }

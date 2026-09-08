@@ -1,8 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import useAuthStore, { getAccessToken, getRefreshToken } from '../store/authStore';
+import useAuthStore, {
+  getAccessToken,
+  getRefreshToken,
+  markRecentLogin,
+  clearRecentLogin,
+  isRecentLoginWindow,
+} from '../store/authStore';
 import toast from 'react-hot-toast';
+import { ADMIN_ROUTES, needsAuthInit } from '../config/routes';
 
 const AuthContext = createContext(null);
 
@@ -17,12 +24,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isInitialized, setIsInitialized] = useState(false);
-  
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const [isInitialized, setIsInitialized] = useState(() => !needsAuthInit(window.location.pathname));
+
   const {
     user,
     isAuthenticated,
-    isLoading,
     setAuth,
     setUser,
     logout: clearAuth,
@@ -33,94 +40,100 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
   } = useAuthStore();
 
-  // Initialize auth only for admin routes (skip API calls on public pages)
+  const hasActiveSession = () => {
+    const state = useAuthStore.getState();
+    return Boolean(state.accessToken && state.user?.role);
+  };
+
+  const isRecentLogin = () => isRecentLoginWindow();
+
+  // Restore session on hard refresh only — skip after a fresh login
   useEffect(() => {
-    const initAuth = async () => {
-      const token = getAccessToken();
-      const refreshToken = getRefreshToken();
-      const storedUser = localStorage.getItem('user');
+    if (!hasHydrated) return;
 
-      if (!token && !refreshToken && !storedUser) {
-        setIsInitialized(true);
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        const status = await authAPI.checkAuth();
-        if (!status.authenticated) {
-          if (refreshToken) {
-            const refreshed = await authAPI.refreshToken(refreshToken);
-            const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshed.data;
-            let parsedUser = null;
-            try {
-              parsedUser = storedUser ? JSON.parse(storedUser) : null;
-            } catch {
-              parsedUser = null;
-            }
-            setAuth(parsedUser, newAccessToken, newRefreshToken || refreshToken);
-          } else {
-            clearAuth();
-            setIsInitialized(true);
-            return;
-          }
-        }
-
-        const profile = await authAPI.getProfile();
-        setAuth(profile.data, getAccessToken(), getRefreshToken());
-      } catch (error) {
-        console.error('Token validation failed:', error);
-        clearAuth();
-      } finally {
-        setLoading(false);
-        setIsInitialized(true);
-      }
-    };
-
-    if (!location.pathname.startsWith('/admin')) {
+    if (!needsAuthInit(location.pathname)) {
       setIsInitialized(true);
       return;
     }
 
-    initAuth();
-  }, [location.pathname]);
-
-  // Login function
-  const login = async (credentials) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.login(credentials);
-      const { admin, accessToken, refreshToken } = response.data || {};
-
-      if (!accessToken) {
-        throw new Error('Login succeeded but no access token was returned');
-      }
-
-      setAuth(admin, accessToken, refreshToken);
-      
-      toast.success('Login successful!');
-      navigate('/admin/dashboard');
-      
-      return { success: true, data: response.data };
-    } catch (error) {
-      const message = error.message || 'Login failed';
-      toast.error(message);
-      return { success: false, error: message };
-    } finally {
-      setLoading(false);
+    if (hasActiveSession() || isRecentLogin()) {
+      setIsInitialized(true);
+      return;
     }
+
+    const token = getAccessToken();
+    const refreshToken = getRefreshToken();
+
+    if (!token && !refreshToken) {
+      setIsInitialized(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      try {
+        if (token) {
+          const profile = await authAPI.getProfile();
+          if (cancelled) return;
+          setAuth(profile.data, getAccessToken(), getRefreshToken());
+          return;
+        }
+
+        if (refreshToken) {
+          const refreshed = await authAPI.refreshToken(refreshToken);
+          const { accessToken, refreshToken: newRefreshToken } = refreshed.data || {};
+          if (!accessToken || cancelled) return;
+
+          setAuth(useAuthStore.getState().user, accessToken, newRefreshToken || refreshToken);
+
+          const profile = await authAPI.getProfile();
+          if (cancelled) return;
+          setAuth(profile.data, accessToken, newRefreshToken || refreshToken);
+        }
+      } catch (error) {
+        if (!cancelled && !isRecentLogin()) {
+          console.error('Session restore failed:', error);
+          clearAuth();
+        }
+      } finally {
+        if (!cancelled) {
+          setIsInitialized(true);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, hasHydrated]);
+
+  const login = async (credentials) => {
+    const response = await authAPI.login(credentials);
+    const { admin, accessToken, refreshToken } = response.data || {};
+
+    if (!accessToken || !admin) {
+      throw new Error('Login succeeded but session data was incomplete');
+    }
+
+    markRecentLogin();
+    setAuth(admin, accessToken, refreshToken);
+    setIsInitialized(true);
+
+    toast.success('Login successful!');
+    navigate(ADMIN_ROUTES.dashboard, { replace: true });
+
+    return { success: true, data: response.data };
   };
 
-  // Register function
   const register = async (data) => {
     try {
       setLoading(true);
       const response = await authAPI.register(data);
-      
       toast.success('Registration successful! Please login.');
-      navigate('/admin/login');
-      
+      navigate(ADMIN_ROUTES.login);
       return { success: true, data: response.data };
     } catch (error) {
       const message = error.message || 'Registration failed';
@@ -131,24 +144,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
-      setLoading(true);
       await authAPI.logout();
-      clearAuth();
-      toast.success('Logged out successfully');
-      navigate('/admin/login');
-    } catch (error) {
-      // Even if API call fails, clear local state
-      clearAuth();
-      navigate('/admin/login');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Clear local session even if API fails
     }
+
+    clearRecentLogin();
+    clearAuth();
+    setIsInitialized(true);
+    toast.success('Logged out successfully');
+    navigate(ADMIN_ROUTES.login, { replace: true });
   };
 
-  // Update profile
   const updateProfile = async (data) => {
     try {
       setLoading(true);
@@ -165,7 +174,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Change password
   const changePassword = async (passwords) => {
     try {
       setLoading(true);
@@ -181,7 +189,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Forgot password
   const forgotPassword = async (email) => {
     try {
       setLoading(true);
@@ -197,13 +204,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Reset password
   const resetPassword = async (token, newPassword) => {
     try {
       setLoading(true);
       await authAPI.resetPassword(token, newPassword);
       toast.success('Password reset successful! Please login.');
-      navigate('/admin/login');
+      navigate(ADMIN_ROUTES.login);
       return { success: true };
     } catch (error) {
       const message = error.message || 'Password reset failed';
@@ -217,8 +223,8 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAuthenticated,
-    isLoading,
-    isInitialized,
+    isLoading: !hasHydrated,
+    isInitialized: isInitialized && hasHydrated,
     login,
     register,
     logout,

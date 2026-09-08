@@ -1,17 +1,35 @@
 import axios from 'axios';
-import useAuthStore, { getAccessToken, getRefreshToken, syncAuthToStorage } from '../../store/authStore';
+import useAuthStore, { getAccessToken, getRefreshToken, clearAuthStorage, isRecentLoginWindow } from '../../store/authStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
 const API_DEBUG = import.meta.env.VITE_DEBUG_API === 'true';
 
-const isAdminAppRoute = () => {
-  const path = window.location.pathname;
-  return path.startsWith('/admin') && path !== '/admin/login';
+const isPublicAuthRequest = (url = '') => {
+  const path = url.replace(API_BASE_URL, '');
+  return (
+    path.includes('/auth/login') ||
+    path.includes('/auth/register') ||
+    path.includes('/auth/refresh-token')
+  );
 };
 
-const clearAuthStorage = () => {
-  useAuthStore.getState().logout();
+const setAuthHeader = (config, token) => {
+  if (!token) {
+    if (config.headers?.delete) {
+      config.headers.delete('Authorization');
+    } else {
+      delete config.headers?.Authorization;
+    }
+    return;
+  }
+
+  const value = `Bearer ${token}`;
+  if (config.headers?.set) {
+    config.headers.set('Authorization', value);
+  } else {
+    config.headers = { ...config.headers, Authorization: value };
+  }
 };
 
 let refreshPromise = null;
@@ -31,8 +49,8 @@ const refreshAccessToken = async () => {
       `${API_BASE_URL}/auth/refresh-token`,
       { refreshToken },
       {
-        withCredentials: true,
         headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
       }
     );
 
@@ -41,15 +59,7 @@ const refreshAccessToken = async () => {
       throw new Error('Refresh response missing access token');
     }
 
-    const state = useAuthStore.getState();
-    useAuthStore.setState({
-      accessToken,
-      refreshToken: newRefreshToken || refreshToken,
-      isAuthenticated: true,
-      user: state.user,
-    });
-    syncAuthToStorage(useAuthStore.getState());
-
+    useAuthStore.getState().setTokens(accessToken, newRefreshToken || refreshToken);
     return accessToken;
   })();
 
@@ -71,16 +81,16 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getAccessToken();
+    const url = config.url || '';
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!isPublicAuthRequest(url)) {
+      setAuthHeader(config, getAccessToken());
     } else {
-      delete config.headers.Authorization;
+      setAuthHeader(config, null);
     }
 
     if (API_DEBUG) {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`[API Request] ${config.method?.toUpperCase()} ${url}`);
     }
 
     return config;
@@ -109,12 +119,13 @@ apiClient.interceptors.response.use(
     }
 
     if (status === 401 && originalRequest && !originalRequest._retry) {
-      if (requestUrl.includes('/auth/refresh-token') || requestUrl.includes('/auth/login')) {
-        clearAuthStorage();
-        if (isAdminAppRoute()) {
-          window.location.href = '/admin/login';
-        }
-        return Promise.reject(error);
+      if (isPublicAuthRequest(requestUrl)) {
+        return Promise.reject({
+          message: error.response?.data?.message || error.message || 'Authentication failed',
+          status,
+          data: error.response?.data,
+          original: error,
+        });
       }
 
       originalRequest._retry = true;
@@ -122,25 +133,23 @@ apiClient.interceptors.response.use(
       if (getRefreshToken()) {
         try {
           const accessToken = await refreshAccessToken();
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          setAuthHeader(originalRequest, accessToken);
           return apiClient(originalRequest);
         } catch (refreshError) {
-          clearAuthStorage();
-          if (isAdminAppRoute()) {
-            window.location.href = '/admin/login';
+          if (!isRecentLoginWindow()) {
+            clearAuthStorage();
           }
-          return Promise.reject(refreshError);
+          return Promise.reject({
+            message: refreshError.message || 'Session expired',
+            status: 401,
+            original: refreshError,
+          });
         }
       }
 
-      clearAuthStorage();
-      if (isAdminAppRoute()) {
-        window.location.href = '/admin/login';
+      if (!isRecentLoginWindow()) {
+        clearAuthStorage();
       }
-    }
-
-    if (status === 403) {
-      console.error('Access forbidden - insufficient permissions');
     }
 
     return Promise.reject({

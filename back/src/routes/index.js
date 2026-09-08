@@ -9,6 +9,7 @@ import monographRoutes from './monograph.routes.js';
 import contactRoutes from './contact.routes.js';
 import aboutRoutes from './about.routes.js';
 import publicRoutes from './public.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.use('/news', newsRoutes);
 router.use('/monographs', monographRoutes);
 router.use('/contact', contactRoutes);
 router.use('/about', aboutRoutes);
+router.use('/dashboard', dashboardRoutes);
 router.use('/public', publicRoutes);
 
 // API Documentation route
@@ -55,6 +57,7 @@ router.get('/', (req, res) => {
       monographs: '/api/v1/monographs',
       contact: '/api/v1/contact',
       about: '/api/v1/about',
+      dashboard: '/api/v1/dashboard/summary',
       health: '/api/v1/health'
     },
     documentation: 'API documentation will be available soon'

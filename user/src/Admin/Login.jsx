@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input } from '../components/ui';
+import BrandLogos from '../components/BrandLogos';
+import { DEVELOPER_NAME } from '../config/routes';
+import toast from 'react-hot-toast';
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -27,39 +31,61 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-    await login({ username: formData.username, password: formData.password });
+    if (!validateForm() || submitting) return;
+
+    setSubmitting(true);
+    try {
+      await login({ username: formData.username.trim(), password: formData.password });
+    } catch (error) {
+      toast.error(error.message || 'Login failed. Check username, password, and that the backend is running.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 page-backdrop">
       <div className="max-w-md w-full space-y-8">
-        {/* Header */}
         <div className="text-center">
-          <div className="flex justify-center items-center space-x-3 mb-4">
-            <img src="/jour.png" alt="Faculty Logo" className="h-14 w-auto object-contain" />
-            <img src="/kdr.png" alt="Kandahar University Logo" className="h-14 w-auto object-contain" />
+          <div className="flex justify-center mb-4">
+            <BrandLogos size="md" className="justify-center" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-1">
-            Journalism and Public Relations Faculty
+          <h2 className="text-3xl font-bold text-gray-900 mb-1 font-serif">
+            Journalism & Public Relations Faculty
           </h2>
-          <p className="text-base text-gray-500 mb-4">Admin Portal</p>
+          <p className="text-base text-gray-500 mb-4">Staff Login</p>
           <h3 className="text-xl font-semibold text-gray-800">Sign in to your account</h3>
-          <p className="mt-1 text-sm text-gray-500">Enter your credentials to access the admin dashboard</p>
+          <p className="mt-1 text-sm text-gray-500">Enter your credentials to access the dashboard</p>
         </div>
 
-        {/* Form card */}
         <div className="glass-panel-strong rounded-2xl p-8 space-y-6 border border-white/90">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+            id="staff-login-form"
+            onSubmit={handleSubmit}
+            className="space-y-5"
+            method="post"
+            autoComplete="on"
+            noValidate
+            data-lpignore="true"
+            data-1p-ignore
+          >
             <Input
               label="Username"
               name="username"
+              id="staff-username"
               type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              data-lpignore="true"
+              data-1p-ignore
+              data-form-type="other"
               placeholder="Enter your username"
               value={formData.username}
               onChange={handleChange}
               error={errors.username}
-              icon={<FiMail size={20} />}
+              icon={<FiUser size={20} />}
               fullWidth
               required
             />
@@ -68,7 +94,12 @@ const Login = () => {
               <Input
                 label="Password"
                 name="password"
+                id="staff-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                data-lpignore="true"
+                data-1p-ignore
+                data-form-type="other"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
@@ -81,37 +112,26 @@ const Login = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
               </button>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 border-gray-300 rounded"
-                  style={{ accentColor: '#C79C78' }}
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <Link
-                  to="/admin/forgot-password"
-                  className="font-medium hover:opacity-75 transition-opacity"
-                  style={{ color: '#C79C78' }}
-                >
-                  Forgot password?
-                </Link>
-              </div>
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 border-gray-300 rounded"
+                style={{ accentColor: '#C79C78' }}
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                Remember me
+              </label>
             </div>
 
-            <Button type="submit" variant="primary" size="lg" fullWidth loading={isLoading} disabled={isLoading}>
+            <Button type="submit" variant="primary" size="lg" fullWidth loading={submitting} disabled={submitting}>
               Sign In
             </Button>
           </form>
@@ -127,8 +147,8 @@ const Login = () => {
           </div>
         </div>
 
-        <p className="text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} Journalism and Public Relations Faculty. All rights reserved.
+        <p className="text-center text-xs text-gray-500">
+          © {new Date().getFullYear()} Journalism & Public Relations Faculty · Developed by {DEVELOPER_NAME}
         </p>
       </div>
     </div>

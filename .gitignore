@@ -1,8 +1,3 @@
-# =============================================================================
-# Journalism Faculty Website — root gitignore (GitHub + security)
-# =============================================================================
-
-# --- Secrets & environment (never commit) ------------------------------------
 .env
 .env.*
 !.env.example
@@ -21,12 +16,10 @@ credentials/
 serviceAccount*.json
 firebase-adminsdk*.json
 
-# --- Dependencies -----------------------------------------------------------
 node_modules/
 .pnp
 .pnp.js
 
-# --- Build & cache ----------------------------------------------------------
 dist/
 dist-ssr/
 build/
@@ -39,7 +32,6 @@ out/
 .vite/
 *.tsbuildinfo
 
-# --- Logs & runtime ---------------------------------------------------------
 logs/
 *.log
 npm-debug.log*
@@ -49,13 +41,11 @@ pnpm-debug.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# --- Test & coverage --------------------------------------------------------
 coverage/
 .nyc_output/
 *.lcov
 .jest/
 
-# --- OS & editor noise ------------------------------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -75,31 +65,25 @@ Desktop.ini
 *.sublime-workspace
 *.sublime-project
 
-# VS Code — ignore local settings, keep shared extensions if present
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json.example
 
-# --- Database & backups -----------------------------------------------------
 *.dump
 *.sql.gz
 dump/
 data/db/
 mongodb-data/
 
-# --- User uploads (serve locally, do not version binary assets) -------------
 back/uploads/**/*
 !back/uploads/**/.gitkeep
 
-# --- Legacy / generated -----------------------------------------------------
 **/generated/prisma
 .prisma/
 
-# --- Misc local overrides ---------------------------------------------------
 *.local
 .envrc
 .direnv/
 
-# --- Optional: local agent/IDE session data ---------------------------------
 .cursor/projects/
 .agent/

@@ -1,6 +1,6 @@
 import express from 'express';
 import * as teacherController from '../controllers/teacher.controller.js';
-import { verifyToken, isAdmin, isEditor } from '../middlewares/auth.js';
+import { verifyToken, isEditor } from '../middlewares/auth.js';
 import { validate, validateObjectId } from '../middlewares/validate.js';
 import { uploadTeacherImage, handleUploadError } from '../utils/upload.js';
 import { 
@@ -52,7 +52,7 @@ router.get('/:id', validateObjectId('id'), teacherController.getTeacherById);
 router.post(
   '/',
   verifyToken,
-  isAdmin,
+  isEditor,
   uploadTeacherImage,
   handleUploadError,
   createTeacherValidator,
@@ -68,7 +68,7 @@ router.post(
 router.put(
   '/:id',
   verifyToken,
-  isAdmin,
+  isEditor,
   validateObjectId('id'),
   uploadTeacherImage,
   handleUploadError,
@@ -85,7 +85,7 @@ router.put(
 router.delete(
   '/:id',
   verifyToken,
-  isAdmin,
+  isEditor,
   validateObjectId('id'),
   teacherController.deleteTeacher
 );

@@ -9,3 +9,4 @@ export { adminsAPI } from './admins';
 export { aboutAPI } from './about';
 export { contactAPI } from './contact';
 export { publicAPI } from './public';
+export { dashboardAPI } from './dashboard';

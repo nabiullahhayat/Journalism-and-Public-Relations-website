@@ -61,7 +61,7 @@ export const newsAPI = {
 
   // Toggle featured status (admin)
   toggleFeatured: async (id) => {
-    const response = await apiClient.patch(`/news/${id}/featured`);
+    const response = await apiClient.patch(`/news/${id}/toggle-featured`);
     return response.data;
   },
 };
