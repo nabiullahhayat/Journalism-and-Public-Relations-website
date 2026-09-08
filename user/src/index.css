@@ -60,6 +60,12 @@ body {
   border-bottom: 1px solid rgba(226, 232, 240, 0.85);
 }
 
+.modal-backdrop {
+  background: rgba(15, 23, 42, 0.25);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
 .shadow-soft {
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
 }
