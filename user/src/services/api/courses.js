@@ -1,63 +1,104 @@
-import apiClient from './client';
+import {
+  STORAGE_KEYS,
+  getCollection,
+  findById,
+  createItem,
+  updateItem,
+  deleteItem,
+  formatCourse,
+} from '../storage/db.js';
+import { delay, success, paginate } from '../storage/helpers.js';
 
 export const coursesAPI = {
-  // Get all courses (public)
   getAll: async (params = {}) => {
-    const response = await apiClient.get('/courses', { params });
-    return response.data;
+    await delay();
+    let items = getCollection(STORAGE_KEYS.COURSES).map(formatCourse);
+
+    if (params.department) items = items.filter((c) => c.departmentId === params.department);
+    if (params.level) items = items.filter((c) => c.level === params.level);
+    if (params.isActive !== undefined) {
+      items = items.filter((c) => c.isActive === (params.isActive === 'true' || params.isActive === true));
+    }
+
+    const { data, pagination } = paginate(items, {
+      ...params,
+      searchFields: ['name', 'code', 'description'],
+    });
+    return success('Courses retrieved successfully', data, { pagination });
   },
 
-  // Get course by ID (public)
   getById: async (id) => {
-    const response = await apiClient.get(`/courses/${id}`);
-    return response.data;
+    await delay();
+    const course = findById(STORAGE_KEYS.COURSES, id);
+    if (!course) throw { message: 'Course not found', status: 404 };
+    return success('Course retrieved successfully', formatCourse(course));
   },
 
-  // Get course by code (public)
   getByCode: async (code) => {
-    const response = await apiClient.get(`/courses/code/${code}`);
-    return response.data;
+    await delay();
+    const course = getCollection(STORAGE_KEYS.COURSES).find(
+      (c) => c.code?.toUpperCase() === String(code).toUpperCase()
+    );
+    if (!course) throw { message: 'Course not found', status: 404 };
+    return success('Course retrieved successfully', formatCourse(course));
   },
 
-  // Get courses by department (public)
   getByDepartment: async (departmentId, params = {}) => {
-    const response = await apiClient.get(`/courses/department/${departmentId}`, { params });
-    return response.data;
+    await delay();
+    return coursesAPI.getAll({ ...params, department: departmentId });
   },
 
-  // Get courses by level (public)
   getByLevel: async (level, params = {}) => {
-    const response = await apiClient.get(`/courses/level/${level}`, { params });
-    return response.data;
+    await delay();
+    return coursesAPI.getAll({ ...params, level });
   },
 
-  // Create course (admin)
   create: async (data) => {
-    const response = await apiClient.post('/courses', data);
-    return response.data;
+    await delay();
+    const payload = { ...data };
+    if (payload.code) payload.code = payload.code.toUpperCase();
+
+    if (payload.code) {
+      const existing = getCollection(STORAGE_KEYS.COURSES).find((c) => c.code === payload.code);
+      if (existing) throw { message: 'Course with this code already exists' };
+    }
+
+    const course = createItem(STORAGE_KEYS.COURSES, payload);
+    return success('Course created successfully', formatCourse(course));
   },
 
-  // Update course (admin)
   update: async (id, data) => {
-    const response = await apiClient.put(`/courses/${id}`, data);
-    return response.data;
+    await delay();
+    const course = findById(STORAGE_KEYS.COURSES, id);
+    if (!course) throw { message: 'Course not found', status: 404 };
+
+    const payload = { ...data };
+    if (payload.code) payload.code = payload.code.toUpperCase();
+
+    if (payload.code && payload.code !== course.code) {
+      const conflict = getCollection(STORAGE_KEYS.COURSES).find((c) => c.code === payload.code && c.id !== id);
+      if (conflict) throw { message: 'Course with this code already exists' };
+    }
+
+    const updated = updateItem(STORAGE_KEYS.COURSES, id, payload);
+    return success('Course updated successfully', formatCourse(updated));
   },
 
-  // Delete course (admin)
   delete: async (id) => {
-    const response = await apiClient.delete(`/courses/${id}`);
-    return response.data;
+    await delay();
+    if (!deleteItem(STORAGE_KEYS.COURSES, id)) throw { message: 'Course not found', status: 404 };
+    return success('Course deleted successfully');
   },
 
-  // Add instructor (admin)
-  addInstructor: async (id, teacherId) => {
-    const response = await apiClient.post(`/courses/${id}/instructors`, { teacherId });
-    return response.data;
+  addInstructor: async (id, instructorId) => {
+    await delay();
+    updateItem(STORAGE_KEYS.COURSES, id, { teacherId: instructorId });
+    return success('Instructor added');
   },
 
-  // Remove instructor (admin)
-  removeInstructor: async (id, teacherId) => {
-    const response = await apiClient.delete(`/courses/${id}/instructors/${teacherId}`);
-    return response.data;
+  removeInstructor: async (id) => {
+    await delay();
+    updateItem(STORAGE_KEYS.COURSES, id, { teacherId: null });
+    return success('Instructor removed');
   },
 };

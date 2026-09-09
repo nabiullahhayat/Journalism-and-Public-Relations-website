@@ -15,7 +15,7 @@ const Monographs = () => {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['monographs', page, searchTerm, selectedYear],
-    queryFn: () => monographsAPI.getAll({ page, limit, search: searchTerm, year: selectedYear }),
+    queryFn: () => monographsAPI.getAll({ page, limit, search: searchTerm, year: selectedYear, publishedOnly: true }),
   });
 
   const monographs = data?.data || [];

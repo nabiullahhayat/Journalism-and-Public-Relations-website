@@ -16,7 +16,7 @@ const News = () => {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['news', page, searchTerm],
-    queryFn: () => newsAPI.getAll({ page, limit, search: searchTerm }),
+    queryFn: () => newsAPI.getAll({ page, limit, search: searchTerm, status: 'published' }),
   });
 
   const news = data?.data || [];

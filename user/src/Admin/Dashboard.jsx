@@ -16,14 +16,13 @@ import useAuthStore from '../store/authStore';
 import { getImageUrl } from '../utils/image';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const { user, isAuthenticated } = useAuth();
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['admin-dashboard-summary', accessToken],
+    queryKey: ['admin-dashboard-summary'],
     queryFn: () => dashboardAPI.getSummary(),
-    enabled: hasHydrated && Boolean(accessToken),
+    enabled: hasHydrated && isAuthenticated,
     staleTime: 2 * 60 * 1000,
     retry: 1,
   });

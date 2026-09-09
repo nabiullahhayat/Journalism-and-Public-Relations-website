@@ -1,21 +1,30 @@
-import apiClient from './client';
+import { STORAGE_KEYS, getSingleton, setSingleton, createItem } from '../storage/db.js';
+import { delay, success } from '../storage/helpers.js';
 
 export const contactAPI = {
-  // Get contact information (public)
   get: async () => {
-    const response = await apiClient.get('/contact');
-    return response.data;
+    await delay();
+    const contact = getSingleton(STORAGE_KEYS.CONTACT);
+    return success('Contact information retrieved', contact);
   },
 
-  // Update contact information (admin)
   update: async (data) => {
-    const response = await apiClient.put('/contact', data);
-    return response.data;
+    await delay();
+    const current = getSingleton(STORAGE_KEYS.CONTACT) || {};
+    const updated = setSingleton(STORAGE_KEYS.CONTACT, {
+      ...current,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
+    return success('Contact information updated successfully', updated);
   },
 
-  // Send contact message (public)
-  sendMessage: async (message) => {
-    const response = await apiClient.post('/contact/message', message);
-    return response.data;
+  sendMessage: async (data) => {
+    await delay();
+    createItem(STORAGE_KEYS.MESSAGES, {
+      ...data,
+      read: false,
+    });
+    return success('Message sent successfully');
   },
 };

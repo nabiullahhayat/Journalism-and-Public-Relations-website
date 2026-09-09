@@ -1,4 +1,3 @@
-export { default as apiClient } from './client';
 export { authAPI } from './auth';
 export { departmentsAPI } from './departments';
 export { coursesAPI } from './courses';
