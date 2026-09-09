@@ -1,63 +1,99 @@
-import apiClient from './client';
+import {
+  STORAGE_KEYS,
+  getCollection,
+  findById,
+  createItem,
+  updateItem,
+  deleteItem,
+  formatDepartment,
+} from '../storage/db.js';
+import { delay, success, paginate } from '../storage/helpers.js';
 
 export const departmentsAPI = {
-  // Get all departments (public)
   getAll: async (params = {}) => {
-    const response = await apiClient.get('/departments', { params });
-    return response.data;
+    await delay();
+    const items = getCollection(STORAGE_KEYS.DEPARTMENTS).map(formatDepartment);
+    const { data, pagination } = paginate(items, {
+      ...params,
+      searchFields: ['name', 'description', 'code'],
+    });
+    return success('Departments retrieved successfully', data, { pagination });
   },
 
-  // Get department by ID (public)
   getById: async (id) => {
-    const response = await apiClient.get(`/departments/${id}`);
-    return response.data;
+    await delay();
+    const dept = findById(STORAGE_KEYS.DEPARTMENTS, id);
+    if (!dept) throw { message: 'Department not found', status: 404 };
+    return success('Department retrieved successfully', formatDepartment(dept));
   },
 
-  // Get department list (minimal data for dropdowns)
   getList: async () => {
-    const response = await apiClient.get('/departments/list');
-    return response.data;
+    await delay();
+    const data = getCollection(STORAGE_KEYS.DEPARTMENTS)
+      .filter((d) => d.isActive !== false)
+      .map((d) => ({ id: d.id, name: d.name, code: d.code }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return success('Department list retrieved', data);
   },
 
-  // Get department statistics (admin)
   getStats: async (id) => {
-    const response = await apiClient.get(`/departments/${id}/stats`);
-    return response.data;
+    await delay();
+    const dept = formatDepartment(findById(STORAGE_KEYS.DEPARTMENTS, id));
+    if (!dept) throw { message: 'Department not found', status: 404 };
+    const courses = getCollection(STORAGE_KEYS.COURSES).filter((c) => c.departmentId === id).length;
+    return success('Stats retrieved', {
+      teachers: dept.teacherCount,
+      courses,
+    });
   },
 
-  // Create department (admin)
   create: async (data) => {
-    const response = await apiClient.post('/departments', data);
-    return response.data;
+    await delay();
+    const existing = getCollection(STORAGE_KEYS.DEPARTMENTS).find((d) => d.name === data.name);
+    if (existing) throw { message: 'Department with this name already exists' };
+
+    const dept = createItem(STORAGE_KEYS.DEPARTMENTS, data);
+    return success('Department created successfully', formatDepartment(dept));
   },
 
-  // Update department (admin)
   update: async (id, data) => {
-    const response = await apiClient.put(`/departments/${id}`, data);
-    return response.data;
+    await delay();
+    const dept = findById(STORAGE_KEYS.DEPARTMENTS, id);
+    if (!dept) throw { message: 'Department not found', status: 404 };
+
+    if (data.name && data.name !== dept.name) {
+      const conflict = getCollection(STORAGE_KEYS.DEPARTMENTS).find((d) => d.name === data.name && d.id !== id);
+      if (conflict) throw { message: 'Department with this name already exists' };
+    }
+
+    const updated = updateItem(STORAGE_KEYS.DEPARTMENTS, id, data);
+    return success('Department updated successfully', formatDepartment(updated));
   },
 
-  // Delete department (admin)
   delete: async (id) => {
-    const response = await apiClient.delete(`/departments/${id}`);
-    return response.data;
+    await delay();
+    if (!deleteItem(STORAGE_KEYS.DEPARTMENTS, id)) throw { message: 'Department not found', status: 404 };
+    return success('Department deleted successfully');
   },
 
-  // Add teacher to department (admin)
   addTeacher: async (id, teacherId) => {
-    const response = await apiClient.post(`/departments/${id}/teachers`, { teacherId });
-    return response.data;
+    await delay();
+    updateItem(STORAGE_KEYS.TEACHERS, teacherId, { departmentId: id });
+    return success('Teacher added to department');
   },
 
-  // Remove teacher from department (admin)
   removeTeacher: async (id, teacherId) => {
-    const response = await apiClient.delete(`/departments/${id}/teachers/${teacherId}`);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, teacherId);
+    if (teacher?.departmentId === id) {
+      updateItem(STORAGE_KEYS.TEACHERS, teacherId, { departmentId: null });
+    }
+    return success('Teacher removed from department');
   },
 
-  // Set department head (admin)
   setHead: async (id, teacherId) => {
-    const response = await apiClient.patch(`/departments/${id}/head`, { teacherId });
-    return response.data;
+    await delay();
+    updateItem(STORAGE_KEYS.DEPARTMENTS, id, { headId: teacherId });
+    return success('Department head updated');
   },
 };

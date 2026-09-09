@@ -1,15 +1,21 @@
-import apiClient from './client';
+import { STORAGE_KEYS, getSingleton, setSingleton } from '../storage/db.js';
+import { delay, success } from '../storage/helpers.js';
 
 export const aboutAPI = {
-  // Get about page content (public)
   get: async () => {
-    const response = await apiClient.get('/about');
-    return response.data;
+    await delay();
+    const about = getSingleton(STORAGE_KEYS.ABOUT);
+    return success('About information retrieved', about);
   },
 
-  // Update about page content (admin)
   update: async (data) => {
-    const response = await apiClient.put('/about', data);
-    return response.data;
+    await delay();
+    const current = getSingleton(STORAGE_KEYS.ABOUT) || {};
+    const updated = setSingleton(STORAGE_KEYS.ABOUT, {
+      ...current,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
+    return success('About information updated successfully', updated);
   },
 };

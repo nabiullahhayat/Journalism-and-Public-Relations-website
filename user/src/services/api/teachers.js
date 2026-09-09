@@ -1,79 +1,128 @@
-import apiClient from './client';
+import {
+  STORAGE_KEYS,
+  getCollection,
+  findById,
+  createItem,
+  updateItem,
+  deleteItem,
+  formatTeacher,
+} from '../storage/db.js';
+import { delay, success, paginate, parseFormData } from '../storage/helpers.js';
 
 export const teachersAPI = {
-  // Get all teachers (public)
   getAll: async (params = {}) => {
-    const response = await apiClient.get('/teachers', { params });
-    return response.data;
+    await delay();
+    let items = getCollection(STORAGE_KEYS.TEACHERS).map(formatTeacher);
+
+    if (params.department) items = items.filter((t) => t.departmentId === params.department);
+    if (params.isActive !== undefined) {
+      items = items.filter((t) => t.isActive === (params.isActive === 'true' || params.isActive === true));
+    }
+
+    const { data, pagination } = paginate(items, {
+      ...params,
+      searchFields: ['name', 'email', 'city'],
+    });
+    return success('Teachers retrieved successfully', data, { pagination });
   },
 
-  // Get teacher by ID (public)
   getById: async (id) => {
-    const response = await apiClient.get(`/teachers/${id}`);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    if (!teacher) throw { message: 'Teacher not found', status: 404 };
+    return success('Teacher retrieved successfully', formatTeacher(teacher));
   },
 
-  // Get teachers by department (public)
   getByDepartment: async (departmentId, params = {}) => {
-    const response = await apiClient.get(`/teachers/department/${departmentId}`, { params });
-    return response.data;
+    await delay();
+    return teachersAPI.getAll({ ...params, department: departmentId });
   },
 
-  // Get featured teachers (public)
   getFeatured: async (limit = 6) => {
-    const response = await apiClient.get(`/teachers/featured?limit=${limit}`);
-    return response.data;
+    await delay();
+    const data = getCollection(STORAGE_KEYS.TEACHERS)
+      .filter((t) => t.isActive !== false)
+      .slice(0, limit)
+      .map(formatTeacher);
+    return success('Featured teachers retrieved', data);
   },
 
-  // Create teacher (admin)
   create: async (formData) => {
-    const response = await apiClient.post('/teachers', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    await delay();
+    const data = await parseFormData(formData);
+
+    if (data.email) {
+      const existing = getCollection(STORAGE_KEYS.TEACHERS).find((t) => t.email === data.email);
+      if (existing) throw { message: 'Teacher with this email already exists' };
+    }
+
+    const teacher = createItem(STORAGE_KEYS.TEACHERS, {
+      ...data,
+      researchPapers: data.researchPapers || [],
+      professionalCertificates: data.professionalCertificates || [],
+      classes: data.classes || [],
+      isActive: data.isActive !== false,
     });
-    return response.data;
+
+    return success('Teacher created successfully', formatTeacher(teacher));
   },
 
-  // Update teacher (admin)
   update: async (id, formData) => {
-    const response = await apiClient.put(`/teachers/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    if (!teacher) throw { message: 'Teacher not found', status: 404 };
+
+    const data = await parseFormData(formData);
+
+    if (data.email && data.email !== teacher.email) {
+      const conflict = getCollection(STORAGE_KEYS.TEACHERS).find((t) => t.email === data.email && t.id !== id);
+      if (conflict) throw { message: 'Teacher with this email already exists' };
+    }
+
+    const updated = updateItem(STORAGE_KEYS.TEACHERS, id, data);
+    return success('Teacher updated successfully', formatTeacher(updated));
   },
 
-  // Delete teacher (admin)
   delete: async (id) => {
-    const response = await apiClient.delete(`/teachers/${id}`);
-    return response.data;
+    await delay();
+    if (!deleteItem(STORAGE_KEYS.TEACHERS, id)) throw { message: 'Teacher not found', status: 404 };
+    return success('Teacher deleted successfully');
   },
 
-  // Add publication (admin)
   addPublication: async (id, publication) => {
-    const response = await apiClient.post(`/teachers/${id}/publications`, publication);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    const publications = [...(teacher.publications || []), { ...publication, id: crypto.randomUUID?.() || Date.now() }];
+    updateItem(STORAGE_KEYS.TEACHERS, id, { publications });
+    return success('Publication added');
   },
 
-  // Remove publication (admin)
   removePublication: async (id, publicationId) => {
-    const response = await apiClient.delete(`/teachers/${id}/publications/${publicationId}`);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    const publications = (teacher.publications || []).filter((p) => p.id !== publicationId);
+    updateItem(STORAGE_KEYS.TEACHERS, id, { publications });
+    return success('Publication removed');
   },
 
-  // Add award (admin)
   addAward: async (id, award) => {
-    const response = await apiClient.post(`/teachers/${id}/awards`, award);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    const awards = [...(teacher.awards || []), { ...award, id: crypto.randomUUID?.() || Date.now() }];
+    updateItem(STORAGE_KEYS.TEACHERS, id, { awards });
+    return success('Award added');
   },
 
-  // Remove award (admin)
   removeAward: async (id, awardId) => {
-    const response = await apiClient.delete(`/teachers/${id}/awards/${awardId}`);
-    return response.data;
+    await delay();
+    const teacher = findById(STORAGE_KEYS.TEACHERS, id);
+    const awards = (teacher.awards || []).filter((a) => a.id !== awardId);
+    updateItem(STORAGE_KEYS.TEACHERS, id, { awards });
+    return success('Award removed');
   },
 
-  // Toggle featured status (admin)
-  toggleFeatured: async (id) => {
-    const response = await apiClient.patch(`/teachers/${id}/featured`);
-    return response.data;
+  toggleFeatured: async () => {
+    await delay();
+    return success('Featured status updated');
   },
 };

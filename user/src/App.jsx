@@ -1,13 +1,14 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import { ADMIN_ROUTES } from './config/routes';
+import { DATA_CHANGE_EVENT } from './services/storage/keys.js';
 import './App.css';
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 const HomePage = lazy(() => import('./Pages/HomePage'));
 const About = lazy(() => import('./Pages/About'));
@@ -47,6 +48,20 @@ const queryClient = new QueryClient({
   },
 });
 
+const StorageSync = ({ children }) => {
+  const queryClientInstance = useQueryClient();
+
+  useEffect(() => {
+    const handler = () => {
+      queryClientInstance.invalidateQueries();
+    };
+    window.addEventListener(DATA_CHANGE_EVENT, handler);
+    return () => window.removeEventListener(DATA_CHANGE_EVENT, handler);
+  }, [queryClientInstance]);
+
+  return children;
+};
+
 const Loading = () => (
   <div className="min-h-screen flex items-center justify-center page-backdrop">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#C79C78' }} />
@@ -56,6 +71,7 @@ const Loading = () => (
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <StorageSync>
       <div className="min-h-screen">
         <AuthProvider>
           <Suspense fallback={<Loading />}>
@@ -124,6 +140,7 @@ function App() {
           />
         </AuthProvider>
       </div>
+      </StorageSync>
     </QueryClientProvider>
   );
 }

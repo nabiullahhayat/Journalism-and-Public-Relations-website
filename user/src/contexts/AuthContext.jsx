@@ -1,13 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { authAPI } from '../services/api';
-import useAuthStore, {
-  getAccessToken,
-  getRefreshToken,
-  markRecentLogin,
-  clearRecentLogin,
-  isRecentLoginWindow,
-} from '../store/authStore';
+import { authAPI, setCurrentUserId } from '../services/api/auth';
+import useAuthStore, { markRecentLogin, clearRecentLogin } from '../store/authStore';
 import toast from 'react-hot-toast';
 import { ADMIN_ROUTES, needsAuthInit } from '../config/routes';
 
@@ -40,14 +34,6 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
   } = useAuthStore();
 
-  const hasActiveSession = () => {
-    const state = useAuthStore.getState();
-    return Boolean(state.accessToken && state.user?.role);
-  };
-
-  const isRecentLogin = () => isRecentLoginWindow();
-
-  // Restore session on hard refresh only — skip after a fresh login
   useEffect(() => {
     if (!hasHydrated) return;
 
@@ -56,59 +42,12 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (hasActiveSession() || isRecentLogin()) {
-      setIsInitialized(true);
-      return;
+    if (user?.id) {
+      setCurrentUserId(user.id);
     }
 
-    const token = getAccessToken();
-    const refreshToken = getRefreshToken();
-
-    if (!token && !refreshToken) {
-      setIsInitialized(true);
-      return;
-    }
-
-    let cancelled = false;
-
-    const restoreSession = async () => {
-      try {
-        if (token) {
-          const profile = await authAPI.getProfile();
-          if (cancelled) return;
-          setAuth(profile.data, getAccessToken(), getRefreshToken());
-          return;
-        }
-
-        if (refreshToken) {
-          const refreshed = await authAPI.refreshToken(refreshToken);
-          const { accessToken, refreshToken: newRefreshToken } = refreshed.data || {};
-          if (!accessToken || cancelled) return;
-
-          setAuth(useAuthStore.getState().user, accessToken, newRefreshToken || refreshToken);
-
-          const profile = await authAPI.getProfile();
-          if (cancelled) return;
-          setAuth(profile.data, accessToken, newRefreshToken || refreshToken);
-        }
-      } catch (error) {
-        if (!cancelled && !isRecentLogin()) {
-          console.error('Session restore failed:', error);
-          clearAuth();
-        }
-      } finally {
-        if (!cancelled) {
-          setIsInitialized(true);
-        }
-      }
-    };
-
-    restoreSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [location.pathname, hasHydrated]);
+    setIsInitialized(true);
+  }, [location.pathname, hasHydrated, user?.id]);
 
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
@@ -119,6 +58,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     markRecentLogin();
+    setCurrentUserId(admin.id);
     setAuth(admin, accessToken, refreshToken);
     setIsInitialized(true);
 
@@ -148,10 +88,11 @@ export const AuthProvider = ({ children }) => {
     try {
       await authAPI.logout();
     } catch {
-      // Clear local session even if API fails
+      // ignore
     }
 
     clearRecentLogin();
+    setCurrentUserId(null);
     clearAuth();
     setIsInitialized(true);
     toast.success('Logged out successfully');
@@ -193,7 +134,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       await authAPI.forgotPassword(email);
-      toast.success('Password reset link sent to your email');
+      toast.success('Password reset is not available in offline mode');
       return { success: true };
     } catch (error) {
       const message = error.message || 'Failed to send reset link';

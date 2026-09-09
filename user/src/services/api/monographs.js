@@ -1,39 +1,70 @@
-import apiClient from './client';
+import {
+  STORAGE_KEYS,
+  getCollection,
+  findById,
+  createItem,
+  updateItem,
+  deleteItem,
+  formatMonograph,
+} from '../storage/db.js';
+import { delay, success, paginate } from '../storage/helpers.js';
 
 export const monographsAPI = {
-  // Get all monographs (public)
   getAll: async (params = {}) => {
-    const response = await apiClient.get('/monographs', { params });
-    return response.data;
+    await delay();
+    let items = getCollection(STORAGE_KEYS.MONOGRAPHS).map(formatMonograph);
+
+    if (params.department) items = items.filter((m) => m.departmentId === params.department);
+    if (params.year) items = items.filter((m) => String(m.year) === String(params.year));
+    if (params.degree) items = items.filter((m) => m.degree === params.degree);
+    if (params.publishedOnly) items = items.filter((m) => m.isPublished !== false);
+
+    items.sort((a, b) => (b.year || 0) - (a.year || 0));
+
+    const { data, pagination } = paginate(items, {
+      ...params,
+      searchFields: ['studentName', 'supervisor', 'title', 'issue'],
+    });
+    return success('Monographs retrieved successfully', data, { pagination });
   },
 
-  // Get monograph by ID (public)
   getById: async (id) => {
-    const response = await apiClient.get(`/monographs/${id}`);
-    return response.data;
+    await delay();
+    const mono = findById(STORAGE_KEYS.MONOGRAPHS, id);
+    if (!mono) throw { message: 'Monograph not found', status: 404 };
+    updateItem(STORAGE_KEYS.MONOGRAPHS, id, { downloads: (mono.downloads || 0) + 1 });
+    return success('Monograph retrieved successfully', formatMonograph({ ...mono, downloads: (mono.downloads || 0) + 1 }));
   },
 
-  // Get monographs by year (public)
-  getByYear: async (year, params = {}) => {
-    const response = await apiClient.get(`/monographs/year/${year}`, { params });
-    return response.data;
+  getByYear: async (year) => {
+    await delay();
+    const data = getCollection(STORAGE_KEYS.MONOGRAPHS)
+      .filter((m) => m.year === parseInt(year, 10) && m.isPublished !== false)
+      .map(formatMonograph);
+    return success('Monographs retrieved successfully', data);
   },
 
-  // Create monograph (admin)
   create: async (data) => {
-    const response = await apiClient.post('/monographs', data);
-    return response.data;
+    await delay();
+    const mono = createItem(STORAGE_KEYS.MONOGRAPHS, {
+      ...data,
+      keywords: data.keywords || [],
+      isPublished: data.isPublished !== false,
+      downloads: 0,
+    });
+    return success('Monograph created successfully', formatMonograph(mono));
   },
 
-  // Update monograph (admin)
   update: async (id, data) => {
-    const response = await apiClient.put(`/monographs/${id}`, data);
-    return response.data;
+    await delay();
+    if (!findById(STORAGE_KEYS.MONOGRAPHS, id)) throw { message: 'Monograph not found', status: 404 };
+    const updated = updateItem(STORAGE_KEYS.MONOGRAPHS, id, data);
+    return success('Monograph updated successfully', formatMonograph(updated));
   },
 
-  // Delete monograph (admin)
   delete: async (id) => {
-    const response = await apiClient.delete(`/monographs/${id}`);
-    return response.data;
+    await delay();
+    if (!deleteItem(STORAGE_KEYS.MONOGRAPHS, id)) throw { message: 'Monograph not found', status: 404 };
+    return success('Monograph deleted successfully');
   },
 };
